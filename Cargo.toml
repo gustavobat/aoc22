@@ -1,0 +1,10 @@
+[package]
+name = "aoc22"
+version = "0.1.0"
+edition = "2021"
+autobins = true
+
+[dependencies]
+anyhow = "1.0.66"
+itertools = "0.10.5"
+

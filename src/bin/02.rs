@@ -1,21 +1,8 @@
 use anyhow::Result;
 use std::str::FromStr;
+use aoc22::read_one_per_line;
 
-#[derive(Debug)]
-enum ShapePoints {
-    Rock = 1,
-    Paper = 2,
-    Scissors = 3,
-}
-
-#[derive(Debug)]
-enum OutcomePoints {
-    Loss = 0,
-    Draw = 3,
-    Win = 6,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum OpponentPlay {
     Rock = 1,
     Paper = 2,
@@ -35,12 +22,11 @@ impl FromStr for OpponentPlay {
     }
 }
 
-#[derive(Debug)]
-#[repr(u8)]
+#[derive(Debug, Copy, Clone)]
 enum SecondColumn {
-    X = b'X',
-    Y = b'Y',
-    Z = b'Z',
+    X = 0,
+    Y = 1,
+    Z = 2,
 }
 
 impl FromStr for SecondColumn {
@@ -56,6 +42,16 @@ impl FromStr for SecondColumn {
     }
 }
 
+impl SecondColumn {
+    fn to_shape_points(&self) -> u32 {
+        *self as u32 + 1
+    }
+
+    fn to_outcome_points(&self) -> u32 {
+        *self as u32 * 3
+    }
+}
+
 #[derive(Debug)]
 struct Round {
     opponent_play: OpponentPlay,
@@ -67,10 +63,11 @@ impl FromStr for Round {
 
     fn from_str(s: &str) -> Result<Self> {
         if let Some((opponent_play_str, second_column_str)) = s.split_once(" ") {
-            Ok(Round{ 
-                opponent_play: OpponentPlay::from_str(opponent_play_str).unwrap(),
-                second_column: SecondColumn::from_str(second_column_str).unwrap(),
-            })
+            Ok(Round::new(
+                    OpponentPlay::from_str(opponent_play_str).unwrap(),
+                    SecondColumn::from_str(second_column_str).unwrap()
+                    )
+              )
         } else {
             Err(anyhow::format_err!("Could not parse plays"))
         }
@@ -79,76 +76,30 @@ impl FromStr for Round {
 
 
 impl Round {
+    fn new(opponent_play : OpponentPlay, second_column: SecondColumn) -> Self {
+        Self{opponent_play, second_column}
+    }
 
     fn outcome_score(&self) -> u32 {
-        match self.opponent_play {
-            OpponentPlay::Rock =>
-                match self.second_column {
-                    SecondColumn::X => OutcomePoints::Draw as u32,
-                    SecondColumn::Y => OutcomePoints::Win as u32,
-                    SecondColumn::Z => OutcomePoints::Loss as u32,
-                },
-            OpponentPlay::Paper =>
-                match self.second_column {
-                    SecondColumn::X => OutcomePoints::Loss as u32,
-                    SecondColumn::Y => OutcomePoints::Draw as u32,
-                    SecondColumn::Z => OutcomePoints::Win as u32,
-                },
-            OpponentPlay::Scissors =>
-                match self.second_column {
-                    SecondColumn::X => OutcomePoints::Win as u32,
-                    SecondColumn::Y => OutcomePoints::Loss as u32,
-                    SecondColumn::Z => OutcomePoints::Draw as u32,
-                },                     
-        }
+        (self.second_column as u32 + 5 - self.opponent_play as u32) % 3 * 3
     }
 
     fn shape_score(&self) -> u32 {
-        match self.opponent_play {
-            OpponentPlay::Rock =>
-                match self.second_column {
-                    SecondColumn::X => ShapePoints::Scissors as u32,
-                    SecondColumn::Y => ShapePoints::Rock as u32,
-                    SecondColumn::Z => ShapePoints::Paper as u32,
-                },
-            OpponentPlay::Paper => 
-                match self.second_column {
-                    SecondColumn::X => ShapePoints::Rock as u32,
-                    SecondColumn::Y => ShapePoints::Paper as u32,
-                    SecondColumn::Z => ShapePoints::Scissors as u32,
-                },
-            OpponentPlay::Scissors =>
-                match self.second_column {
-                    SecondColumn::X => ShapePoints::Paper as u32,
-                    SecondColumn::Y => ShapePoints::Scissors as u32,
-                    SecondColumn::Z => ShapePoints::Rock as u32,
-                },
-        }
+        (self.opponent_play as u32 + self.second_column as u32 + 1) % 3 + 1
     }
 
     pub fn total_round_score_1(&self) -> u32 {
-        match self.second_column {
-            SecondColumn::X => ShapePoints::Rock as u32 + self.outcome_score(),
-            SecondColumn::Y => ShapePoints::Paper as u32 + self.outcome_score(),
-            SecondColumn::Z => ShapePoints::Scissors as u32 + self.outcome_score(),
-        }
+        self.second_column.to_shape_points() + self.outcome_score()
     }
 
     pub fn total_round_score_2(&self) -> u32 {
-        match self.second_column {
-            SecondColumn::X => OutcomePoints::Loss as u32 + self.shape_score(),
-            SecondColumn::Y => OutcomePoints::Draw as u32 + self.shape_score(),
-            SecondColumn::Z => OutcomePoints::Win as u32 + self.shape_score(),
-        }
+        self.second_column.to_outcome_points() + self.shape_score()
     }
 }
 
 fn main() -> Result<()> {
-    
-    let round_vec : Vec<Round> = std::fs::read_to_string("./data/02.input")?
-        .lines()
-        .filter_map(|line| line.parse::<Round>().ok())
-        .collect();
+
+    let round_vec = read_one_per_line::<Round>("./data/02.input")?;
 
     let mut score1 : u32 = 0;
     for round in &round_vec {
@@ -164,4 +115,34 @@ fn main() -> Result<()> {
     println!("Total score 2: {}", score2);
 
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn outcome_score() {
+        assert_eq!(Round::new(OpponentPlay::Rock, SecondColumn::X).outcome_score(), 3);
+        assert_eq!(Round::new(OpponentPlay::Rock, SecondColumn::Y).outcome_score(), 6);
+        assert_eq!(Round::new(OpponentPlay::Rock, SecondColumn::Z).outcome_score(), 0);
+        assert_eq!(Round::new(OpponentPlay::Paper, SecondColumn::X).outcome_score(), 0);
+        assert_eq!(Round::new(OpponentPlay::Paper, SecondColumn::Y).outcome_score(), 3);
+        assert_eq!(Round::new(OpponentPlay::Paper, SecondColumn::Z).outcome_score(), 6);
+        assert_eq!(Round::new(OpponentPlay::Scissors, SecondColumn::X).outcome_score(), 6);
+        assert_eq!(Round::new(OpponentPlay::Scissors, SecondColumn::Y).outcome_score(), 0);
+        assert_eq!(Round::new(OpponentPlay::Scissors, SecondColumn::Z).outcome_score(), 3);
+    }
+    #[test]
+    fn shape_score() {
+        assert_eq!(Round::new(OpponentPlay::Rock, SecondColumn::X).shape_score(), 3);
+        assert_eq!(Round::new(OpponentPlay::Rock, SecondColumn::Y).shape_score(), 1);
+        assert_eq!(Round::new(OpponentPlay::Rock, SecondColumn::Z).shape_score(), 2);
+        assert_eq!(Round::new(OpponentPlay::Paper, SecondColumn::X).shape_score(), 1);
+        assert_eq!(Round::new(OpponentPlay::Paper, SecondColumn::Y).shape_score(), 2);
+        assert_eq!(Round::new(OpponentPlay::Paper, SecondColumn::Z).shape_score(), 3);
+        assert_eq!(Round::new(OpponentPlay::Scissors, SecondColumn::X).shape_score(), 2);
+        assert_eq!(Round::new(OpponentPlay::Scissors, SecondColumn::Y).shape_score(), 3);
+        assert_eq!(Round::new(OpponentPlay::Scissors, SecondColumn::Z).shape_score(), 1);
+    }
 }

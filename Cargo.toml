@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 autobins = true
 
+[lib]
+name = "aoc22"
+path = "src/lib.rs"
+
 [dependencies]
 anyhow = "1.0.66"
 itertools = "0.10.5"

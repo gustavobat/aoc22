@@ -11,3 +11,13 @@ where
         .collect())
 }
 
+pub fn read_one_every_double_linebreak<T>(path: &str) -> Result<Vec<T>>
+    where
+        T: FromStr,
+{
+    Ok(std::fs::read_to_string(path)?
+        .split("\n\n")
+        .filter_map(|str| str.parse::<T>().ok())
+        .collect())
+}
+
